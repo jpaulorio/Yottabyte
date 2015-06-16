@@ -36,8 +36,7 @@ public class VehicleCountDriver extends Configured implements Tool {
     configuration.set(VEHICLE_DATE_FORMAT, get(VEHICLES.dateFormat()));
 
     Job job = Job.getInstance(configuration,this.getClass().getSimpleName());
-      job.setMapperClass(VehicleMapper.class);
-      job.setReducerClass(VehicleCountReducer.class);
+
       FileInputFormat.setInputPaths(job, getPath("VEHICLES.PATH"));
       FileOutputFormat.setOutputPath(job, getPath("VEHICLES_COUNT.PATH"));
 

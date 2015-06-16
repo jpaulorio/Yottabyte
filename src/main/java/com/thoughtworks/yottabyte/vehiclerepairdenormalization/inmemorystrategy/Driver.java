@@ -4,7 +4,12 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -31,8 +36,18 @@ public class Driver extends Configured implements Tool {
     configuration.set(VEHICLE_DATE_FORMAT, get(VEHICLES.dateFormat()));
 
     Job job = Job.getInstance(configuration,this.getClass().getSimpleName());
+      MultipleInputs.addInputPath(job, getPath("VEHICLES.PATH"), TextInputFormat.class, TaggedVehicleMapper.class);
+      MultipleInputs.addInputPath(job, getPath("REPAIRS.PATH"), TextInputFormat.class, TaggedRepairMapper.class);
+      FileOutputFormat.setOutputPath(job, getPath("VEHICLES_REPAIRS.PATH"));
 
-    return job.waitForCompletion(true) ? 0 : 1;
+      job.setJarByClass(this.getClass());
+      job.setMapOutputKeyClass(Text.class);
+      job.setMapOutputValueClass(Text.class);
+      job.setReducerClass(DenormalizingReducer.class);
+      job.setOutputKeyClass(NullWritable.class);
+      job.setOutputValueClass(Text.class);
+
+      return job.waitForCompletion(true) ? 0 : 1;
   }
 
   protected void loadPropertiesFile(String propertyFilePath) throws IOException {
