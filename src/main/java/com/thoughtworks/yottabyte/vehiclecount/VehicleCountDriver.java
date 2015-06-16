@@ -4,7 +4,12 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -14,7 +19,8 @@ import java.io.InputStream;
 import java.util.Properties;
 
 import static com.thoughtworks.yottabyte.constants.FileNameConstants.VEHICLES;
-import static com.thoughtworks.yottabyte.vehiclecount.VehicleMapper.*;
+import static com.thoughtworks.yottabyte.vehiclecount.VehicleMapper.COLUMN_SEPARATOR;
+import static com.thoughtworks.yottabyte.vehiclecount.VehicleMapper.VEHICLE_DATE_FORMAT;
 
 public class VehicleCountDriver extends Configured implements Tool {
 
@@ -30,6 +36,20 @@ public class VehicleCountDriver extends Configured implements Tool {
     configuration.set(VEHICLE_DATE_FORMAT, get(VEHICLES.dateFormat()));
 
     Job job = Job.getInstance(configuration,this.getClass().getSimpleName());
+      job.setMapperClass(VehicleMapper.class);
+      job.setReducerClass(VehicleCountReducer.class);
+      FileInputFormat.setInputPaths(job, getPath("VEHICLES.PATH"));
+      FileOutputFormat.setOutputPath(job, getPath("VEHICLES_COUNT.PATH"));
+
+      job.setJarByClass(this.getClass());
+
+      job.setMapperClass(VehicleMapper.class);
+      job.setMapOutputKeyClass(Text.class);
+      job.setMapOutputValueClass(IntWritable.class);
+
+      job.setReducerClass(VehicleCountReducer.class);
+      job.setOutputKeyClass(NullWritable.class);
+      job.setOutputValueClass(Text.class);
 
     return job.waitForCompletion(true) ? 0 : 1;
   }

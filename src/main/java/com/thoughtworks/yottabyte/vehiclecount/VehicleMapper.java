@@ -10,14 +10,17 @@ import java.io.IOException;
 
 public class VehicleMapper extends Mapper<Object, Text, Text, IntWritable> {
 
-  public static final String COLUMN_SEPARATOR = "COLUMN_SEPARATOR";
+  public static final String COLUMN_SEPARATOR = ",";
   public static final String VEHICLE_DATE_FORMAT = "VEHICLE_DATE_FORMAT";
   private Configuration configuration;
   private static final IntWritable one = new IntWritable(1);
 
   @Override
   public void map(Object key, Text row, Context context) throws IOException, InterruptedException {
-
+      String line = row.toString();
+      String[] fields = line.split(COLUMN_SEPARATOR);
+      String vehicleType = fields[0];
+      context.write(new Text(vehicleType), one);
   }
 
   @Override
