@@ -27,47 +27,38 @@ public class OlympicsDriver {
                 return !s.isEmpty() && !s.contains("Total");
             }
         });
-//
-//        JavaRDD<Tuple2<String, Integer>> fields = lines.flatMap(new FlatMapFunction<String, Tuple2<String, Integer>>() {
-//            @Override
-//            public Iterable<Tuple2<String, Integer>> call(String s) throws Exception {
-//                String[] values = s.split(",");
-//                return Arrays.asList(new Tuple2<String, Integer>(values[1], Integer.parseInt(values[7])));
-//            }
-//        });
 
-        JavaPairRDD<String, Integer> fields = lines.mapToPair(new PairFunction<String, String, Integer>() {
+        JavaRDD<String> usData = lines.filter(new Function<String, Boolean>() {
             @Override
-            public Tuple2<String, Integer> call(String s) throws Exception {
-                String[] values = s.split(",");
-                return new Tuple2<String, Integer>(values[1], Integer.parseInt(values[7]));
+            public Boolean call(String s) throws Exception {
+                return s.contains("United States");
             }
         });
 
-        JavaPairRDD<String, Integer> reduced = fields.reduceByKey(new Function2<Integer, Integer, Integer>() {
+        JavaPairRDD<Integer, Integer> usYearsAndMedals = usData.mapToPair(new PairFunction<String, Integer, Integer>() {
+            @Override
+            public Tuple2<Integer, Integer> call(String s) throws Exception {
+                String[] fields = s.split(",");
+                return new Tuple2<Integer, Integer>(Integer.parseInt(fields[2]), Integer.parseInt(fields[7]));
+            }
+        });
+
+        JavaPairRDD<Integer, Integer> reducedByYear = usYearsAndMedals.reduceByKey(new Function2<Integer, Integer, Integer>() {
             @Override
             public Integer call(Integer integer, Integer integer2) throws Exception {
                 return integer + integer2;
             }
         });
 
-        JavaRDD<Tuple2<Integer, String>> stringIntegerJavaPairRDD = reduced.map(new Function<Tuple2<String, Integer>, Tuple2<Integer, String>>() {
+        JavaPairRDD<Integer, Integer> usMedalsAndYear = reducedByYear.mapToPair(new PairFunction<Tuple2<Integer, Integer>, Integer, Integer>() {
             @Override
-            public Tuple2<Integer, String> call(Tuple2<String, Integer> stringIntegerTuple2) throws Exception {
-                return new Tuple2<Integer, String>(stringIntegerTuple2._2, stringIntegerTuple2._1);
+            public Tuple2<Integer, Integer> call(Tuple2<Integer, Integer> integerIntegerTuple2) throws Exception {
+                return new Tuple2<Integer, Integer>(integerIntegerTuple2._2, integerIntegerTuple2._1);
             }
         });
 
-        JavaRDD<Tuple2<Integer, String>> sortedByValue = stringIntegerJavaPairRDD.sortBy(
-                new Function<Tuple2<Integer, String>, Object>() {
-                    @Override
-                    public Object call(Tuple2<Integer, String> integerStringTuple2) throws Exception {
-                        return integerStringTuple2._1;
-                    }
-                }, false, 1
-        );
+        JavaPairRDD<Integer, Integer> sortedByMedals = usMedalsAndYear.sortByKey(false);
 
-
-        System.out.println(sortedByValue.collect());
+        System.out.println(sortedByMedals.collect());
     }
 }
