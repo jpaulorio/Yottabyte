@@ -10,6 +10,10 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 public class OlympicsDriver {
     public static void main(String[] args) {
         String master = args[0];
@@ -28,42 +32,55 @@ public class OlympicsDriver {
             }
         });
 
-        JavaRDD<String> usData = lines.filter(new Function<String, Boolean>() {
+        JavaPairRDD<String, String> playerAndSport = lines.mapToPair(new PairFunction<String, String, String>() {
             @Override
-            public Boolean call(String s) throws Exception {
-                return s.contains("United States");
-            }
-        });
-
-        JavaPairRDD<Integer, Integer> usYearsAndMedals = usData.mapToPair(new PairFunction<String, Integer, Integer>() {
-            @Override
-            public Tuple2<Integer, Integer> call(String s) throws Exception {
+            public Tuple2<String, String> call(String s) throws Exception {
                 String[] fields = s.split(",");
-                return new Tuple2<Integer, Integer>(Integer.parseInt(fields[2]), Integer.parseInt(fields[7]));
+                return new Tuple2<String, String>(fields[0], fields[3]);
             }
         });
 
-        JavaPairRDD<Integer, Integer> reducedByYear = usYearsAndMedals.reduceByKey(new Function2<Integer, Integer, Integer>() {
+        JavaPairRDD<String, String> sportAndPlayer = playerAndSport.mapToPair(new PairFunction<Tuple2<String, String>, String, String>() {
             @Override
-            public Integer call(Integer integer, Integer integer2) throws Exception {
-                return integer + integer2;
+            public Tuple2<String, String> call(Tuple2<String, String> stringStringTuple2) throws Exception {
+                return new Tuple2<String, String>(stringStringTuple2._2, stringStringTuple2._1);
             }
         });
 
-        JavaPairRDD<Integer, Integer> usMedalsAndYear = reducedByYear.mapToPair(new PairFunction<Tuple2<Integer, Integer>, Integer, Integer>() {
+        JavaPairRDD<String, String> sortedSportAndPlayer = sportAndPlayer.sortByKey();
+
+        JavaPairRDD<String, String> sortedPlayerAndSport = sortedSportAndPlayer.mapToPair(new PairFunction<Tuple2<String, String>, String, String>() {
             @Override
-            public Tuple2<Integer, Integer> call(Tuple2<Integer, Integer> integerIntegerTuple2) throws Exception {
-                return new Tuple2<Integer, Integer>(integerIntegerTuple2._2, integerIntegerTuple2._1);
+            public Tuple2<String, String> call(Tuple2<String, String> stringStringTuple2) throws Exception {
+                return new Tuple2<String, String>(stringStringTuple2._2, stringStringTuple2._1);
             }
         });
 
-        JavaPairRDD<Integer, Integer> lessThan200Medals = usMedalsAndYear.filter(new Function<Tuple2<Integer, Integer>, Boolean>() {
+        JavaPairRDD<String, String> reduced = sortedPlayerAndSport.reduceByKey(new Function2<String, String, String>() {
             @Override
-            public Boolean call(Tuple2<Integer, Integer> integerIntegerTuple2) throws Exception {
-                return integerIntegerTuple2._1 < 200;
+            public String call(String s, String s2) throws Exception {
+                return s + "," + s2;
             }
         });
 
-        System.out.println(lessThan200Medals.collect());
+        JavaPairRDD<String, String> filtered = reduced.filter(new Function<Tuple2<String, String>, Boolean>() {
+            @Override
+            public Boolean call(Tuple2<String, String> stringStringTuple2) throws Exception {
+                String[] sports = stringStringTuple2._2.split(",");
+                Set<String> uniqueSports = new HashSet<String>(Arrays.asList(sports));
+                return uniqueSports.size() > 1;
+            }
+        });
+
+        JavaPairRDD<String, Integer> result = filtered.mapToPair(new PairFunction<Tuple2<String, String>, String, Integer>() {
+            @Override
+            public Tuple2<String, Integer> call(Tuple2<String, String> stringStringTuple2) throws Exception {
+                String[] sports = stringStringTuple2._2.split(",");
+                Set<String> uniqueSports = new HashSet<String>(Arrays.asList(sports));
+                return new Tuple2<String, Integer>(stringStringTuple2._1, uniqueSports.size());
+            }
+        });
+
+        System.out.println(result.collect());
     }
 }
