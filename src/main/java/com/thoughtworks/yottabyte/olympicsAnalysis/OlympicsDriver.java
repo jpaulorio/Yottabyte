@@ -57,8 +57,13 @@ public class OlympicsDriver {
             }
         });
 
-        JavaPairRDD<Integer, Integer> sortedByMedals = usMedalsAndYear.sortByKey(false);
+        JavaPairRDD<Integer, Integer> lessThan200Medals = usMedalsAndYear.filter(new Function<Tuple2<Integer, Integer>, Boolean>() {
+            @Override
+            public Boolean call(Tuple2<Integer, Integer> integerIntegerTuple2) throws Exception {
+                return integerIntegerTuple2._1 < 200;
+            }
+        });
 
-        System.out.println(sortedByMedals.collect());
+        System.out.println(lessThan200Medals.collect());
     }
 }
